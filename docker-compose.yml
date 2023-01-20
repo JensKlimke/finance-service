@@ -1,0 +1,91 @@
+version: '3'
+
+services:
+
+  # FINANCE API
+  finapi:
+    build:
+      context: finapi
+      dockerfile: Dockerfile
+      args:
+        token: ${GITHUB_TOKEN}
+        tag: master
+    image: finapi
+    container_name: finapi
+    environment:
+      - PORT=3000
+      - MONGODB_URL=mongodb://mongo:27017/finance
+      - JWT_SECRET=${FINAPI_JWT_SECRET}
+      - JWT_ACCESS_EXPIRATION_MINUTES=30
+      - JWT_REFRESH_EXPIRATION_DAYS=30
+      - JWT_RESET_PASSWORD_EXPIRATION_MINUTES=10
+      - JWT_INIT_PASSWORD_EXPIRATION_HOURS=48
+      - JWT_VERIFY_EMAIL_EXPIRATION_MINUTES=10
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USERNAME=${SMTP_USER}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - EMAIL_FROM=${EMAIL_SENDER}
+      - FINAPP_FRONTEND_URL=https://finance.${DOMAIN}/
+      - VIRTUAL_HOST=api.finance.${DOMAIN}
+      - LETSENCRYPT_HOST=api.finance.${DOMAIN}
+    restart: unless-stopped
+    networks:
+      - finapp-net
+      - jk-net
+
+
+  # FINANCE APP
+  finapp:
+    build:
+      context: finapp
+      dockerfile: Dockerfile
+      args:
+        REACT_APP_API_URL: https://api.finance.${DOMAIN}/v1
+    image: finapp
+    container_name: finapp
+    environment:
+      - VIRTUAL_HOST=finance.${DOMAIN}
+      - LETSENCRYPT_HOST=finance.${DOMAIN}
+    restart: unless-stopped
+    networks:
+      - jk-net
+
+
+  # MONGO DB
+  mongo:
+    image: mongo:4.2.1-bionic
+    container_name: mongo
+    volumes:
+      - mongo_finance_volume:/data/db
+    restart: unless-stopped
+    networks:
+      - finapp-net
+
+
+  # MONGO EXPRESS
+  mongo-express:
+    image: mongo-express:1.0.0-alpha.4
+    container_name: mongo-express
+    environment:
+      - ME_CONFIG_MONGODB_SERVER=mongo
+      - ME_CONFIG_MONGODB_PORT=27017
+      - ME_CONFIG_MONGODB_ENABLE_ADMIN=true
+      - ME_CONFIG_BASICAUTH_USERNAME=${MONGOEXPRESS_LOGIN}
+      - ME_CONFIG_BASICAUTH_PASSWORD=${MONGOEXPRESS_PASSWORD}
+      - VIRTUAL_HOST=mongo.${DOMAIN}
+      - LETSENCRYPT_HOST=mongo.${DOMAIN}
+    restart: unless-stopped
+    networks:
+      - finapp-net
+      - jk-net
+
+
+volumes:
+  mongo_finance_volume:
+    external: true
+
+networks:
+  finapp-net:
+  jk-net:
+    external: true
