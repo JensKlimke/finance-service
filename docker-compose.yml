@@ -5,7 +5,7 @@ services:
   # FINANCE API
   finapi:
     build:
-      context: finapi
+      context: apps/finapi
       dockerfile: Dockerfile
       args:
         token: ${GITHUB_TOKEN}
@@ -38,7 +38,7 @@ services:
   # FINANCE APP
   finapp:
     build:
-      context: finapp
+      context: apps/finapp
       dockerfile: Dockerfile
       args:
         REACT_APP_API_URL: https://api.finance.${DOMAIN}/v1
